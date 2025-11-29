@@ -1,71 +1,57 @@
-import requests
-from functools import wraps
-from typing import (
-    Mapping,
-    Sequence,
-    Any,
-    Dict,
-    Callable,
-)
+import unittest
+from unittest.mock import patch, Mock
+from typing import Dict, List, Any
 
-__all__ = [
-    "access_nested_map",
-    "get_json",
-    "memoize",
-]
+# Import the functions to be tested
+from utils import access_nested_map, get_json, memoize
 
+class TestAccessNestedMap(unittest.TestCase):
+    def test_access_nested_map_valid_path(self):
+        nested_map = {"a": {"b": {"c": 1}}}
+        path = ["a", "b", "c"]
+        self.assertEqual(access_nested_map(nested_map, path), 1)
 
-def access_nested_map(nested_map: Mapping, path: Sequence) -> Any:
-    """Access nested map with key path.
-    Parameters
-    ----------
-    nested_map: Mapping
-        A nested map
-    path: Sequence
-        a sequence of key representing a path to the value
-    Example
-    -------
-    >>> nested_map = {"a": {"b": {"c": 1}}}
-    >>> access_nested_map(nested_map, ["a", "b", "c"])
-    1
-    """
-    for key in path:
-        if not isinstance(nested_map, Mapping):
-            raise KeyError(key)
-        nested_map = nested_map[key]
+    def test_access_nested_map_invalid_path(self):
+        nested_map = {"a": 1}
+        path = ["a", "b"]
+        with self.assertRaises(KeyError) as context:
+            access_nested_map(nested_map, path)
+        self.assertEqual(str(context.exception), "'b'")
 
-    return nested_map
+class TestGetJson(unittest.TestCase):
+    @patch('utils.requests.get')
+    def test_get_json(self, mock_get):
+        test_url = "http://example.com"
+        test_payload = {"key": "value"}
+        
+        mock_response = Mock()
+        mock_response.json.return_value = test_payload
+        mock_get.return_value = mock_response
+        
+        result = get_json(test_url)
+        
+        mock_get.assert_called_once_with(test_url)
+        self.assertEqual(result, test_payload)
 
+class TestMemoize(unittest.TestCase):
+    def test_memoize(self):
+        class TestClass:
+            def __init__(self):
+                self.call_count = 0
+            
+            @memoize
+            def a_method(self):
+                self.call_count += 1
+                return 42
+        
+        obj = TestClass()
+        
+        first_call = obj.a_method
+        second_call = obj.a_method
+        
+        self.assertEqual(first_call, 42)
+        self.assertEqual(second_call, 42)
+        self.assertEqual(obj.call_count, 1)
 
-def get_json(url: str) -> Dict:
-    """Get JSON from remote URL.
-    """
-    response = requests.get(url)
-    return response.json()
-
-
-def memoize(fn: Callable) -> Callable:
-    """Decorator to memoize a method.
-    Example
-    -------
-    class MyClass:
-        @memoize
-        def a_method(self):
-            print("a_method called")
-            return 42
-    >>> my_object = MyClass()
-    >>> my_object.a_method
-    a_method called
-    42
-    >>> my_object.a_method
-    42
-    """
-    attr_name = "_{}".format(fn.__name__)
-
-    @wraps(fn)
-    def memoized(self):
-        if not hasattr(self, attr_name):
-            setattr(self, attr_name, fn(self))
-        return getattr(self, attr_name)
-
-    return property(memoized)
+if __name__ == '__main__':
+    unittest.main()
