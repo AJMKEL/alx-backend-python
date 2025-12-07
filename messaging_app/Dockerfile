@@ -19,5 +19,5 @@ COPY . /app/
 # Expose port 8000
 EXPOSE 8000
 
-# Run the application
+# Run the application with: docker run -p 8000:8000 messaging-app
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
